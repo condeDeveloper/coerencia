@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.so }}
+
+    # bash nos tres sistemas: no Windows o shell padrao e o PowerShell, e ele
+    # desmonta "-Dexec.args=..." em dois argumentos antes de o Maven ver.
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        so: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Testes
+        run: mvn -B -ntp verify
+
+      - name: toda leitura devolve o que a memoria serial diz
+        run: mvn -B -ntp -q exec:java -Dexec.args="correcao"
+
+      - name: quantas transacoes de barramento cada protocolo gasta
+        run: mvn -B -ntp -q exec:java -Dexec.args="transacoes"
+
+      - name: o que o estado exclusivo economiza
+        run: mvn -B -ntp -q exec:java -Dexec.args="exclusivo"
+
+      - name: o que o estado dono economiza
+        run: mvn -B -ntp -q exec:java -Dexec.args="dono"
+
+      - name: o compartilhamento falso e o enchimento que o conserta
+        run: mvn -B -ntp -q exec:java -Dexec.args="falso"
+
+      - name: Relatorios de teste
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports-${{ matrix.so }}
+          path: target/surefire-reports
